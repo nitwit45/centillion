@@ -1,0 +1,108 @@
+/* Professional Button Styles */
+.button {
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-weight: 600;
+  transition: all var(--transition-base);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  outline: none;
+  white-space: nowrap;
+  font-family: 'Inter', sans-serif;
+  letter-spacing: -0.01em;
+  position: relative;
+}
+
+/* Primary Button */
+.button.primary {
+  background: var(--color-primary);
+  color: white;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--color-primary-dark);
+}
+
+.button.primary:hover {
+  background: var(--color-primary-light);
+  border-color: var(--color-primary-light);
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-1px);
+}
+
+.button.primary:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Secondary Button */
+.button.secondary {
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border-light);
+  color: var(--color-text-primary);
+}
+
+.button.secondary:hover {
+  background: var(--color-bg-tertiary);
+  border-color: var(--color-border-light);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.button.secondary:active {
+  transform: translateY(0);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Outline Button */
+.button.outline {
+  background: transparent;
+  border: 1.5px solid var(--color-border-light);
+  color: var(--color-text-secondary);
+}
+
+.button.outline:hover {
+  background: var(--color-bg-elevated);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  transform: translateY(-1px);
+}
+
+/* Button Sizes */
+.button.small {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+}
+
+.button.medium {
+  padding: 0.625rem 1.25rem;
+  font-size: 0.9375rem;
+  line-height: 1.5rem;
+}
+
+.button.large {
+  padding: 0.875rem 1.75rem;
+  font-size: 1rem;
+  line-height: 1.5rem;
+}
+
+/* Full Width */
+.button.full-width {
+  width: 100%;
+}
+
+/* Disabled State */
+.button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+  pointer-events: none;
+}
+
+/* Focus State for Accessibility */
+.button:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}

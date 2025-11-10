@@ -1,0 +1,263 @@
+/* Professional Contact Form */
+.contact-form-container {
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-2xl);
+  max-width: 800px;
+  margin: 0 auto;
+  box-shadow: var(--shadow-lg);
+}
+
+.form-title {
+  text-align: center;
+  margin-bottom: var(--spacing-xl);
+  font-size: 1.75rem;
+  color: var(--color-text-primary);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+/* Professional Progress Bar */
+.form-progress {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: var(--spacing-3xl);
+}
+
+.progress-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+}
+
+.step-number {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: var(--color-bg-tertiary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  margin-bottom: var(--spacing-sm);
+  color: var(--color-text-tertiary);
+  border: 2px solid var(--color-border);
+  transition: all var(--transition-base);
+  font-size: 0.9375rem;
+}
+
+.step-label {
+  font-size: 0.8125rem;
+  color: var(--color-text-tertiary);
+  transition: all var(--transition-base);
+  font-weight: 500;
+}
+
+.progress-step.active .step-number {
+  background: var(--color-primary);
+  color: white;
+  border-color: var(--color-primary);
+}
+
+.progress-step.active .step-label {
+  color: var(--color-text-primary);
+}
+
+.progress-line {
+  flex-grow: 1;
+  height: 2px;
+  background: var(--color-border);
+  margin: 0 var(--spacing-md);
+  margin-bottom: 32px;
+}
+
+/* Professional Form Controls */
+.form-step {
+  animation: fadeInForm 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes fadeInForm {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.form-group {
+  margin-bottom: var(--spacing-lg);
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: var(--spacing-sm);
+  color: var(--color-text-primary);
+  font-weight: 500;
+  font-size: 0.9375rem;
+}
+
+.form-group input[type="text"],
+.form-group input[type="email"],
+.form-group input[type="tel"],
+.form-group select,
+.form-group textarea {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  color: var(--color-text-primary);
+  font-size: 0.9375rem;
+  transition: all var(--transition-base);
+  font-family: 'Inter', sans-serif;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.1);
+  background: var(--color-bg-secondary);
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 120px;
+  line-height: 1.6;
+}
+
+.form-group select {
+  cursor: pointer;
+}
+
+/* Professional Radio Options */
+.radio-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--spacing-md);
+  margin-top: var(--spacing-sm);
+}
+
+.radio-option {
+  display: flex;
+  align-items: center;
+  min-width: 180px;
+  padding: var(--spacing-sm) var(--spacing-md);
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-base);
+}
+
+.radio-option:hover {
+  border-color: var(--color-primary);
+  background: var(--color-bg-secondary);
+}
+
+.radio-option input[type="radio"] {
+  width: 18px;
+  height: 18px;
+  margin-right: var(--spacing-sm);
+  accent-color: var(--color-primary);
+  cursor: pointer;
+}
+
+.radio-option label {
+  cursor: pointer;
+  margin: 0;
+  color: var(--color-text-secondary);
+}
+
+/* Form Buttons */
+.form-buttons {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--spacing-3xl);
+  gap: var(--spacing-md);
+}
+
+/* Success Message */
+.form-success {
+  text-align: center;
+  padding: var(--spacing-4xl) var(--spacing-xl);
+  animation: fadeInForm 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.form-success-icon {
+  width: 80px;
+  height: 80px;
+  background: var(--color-success);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.5rem;
+  color: white;
+  margin: 0 auto var(--spacing-2xl);
+}
+
+.form-success h2 {
+  font-size: 1.75rem;
+  margin-bottom: var(--spacing-md);
+  color: var(--color-text-primary);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.form-success p {
+  color: var(--color-text-secondary);
+  font-size: 1.0625rem;
+  max-width: 600px;
+  margin: 0 auto var(--spacing-xl);
+  line-height: 1.7;
+}
+
+/* Responsive Form */
+@media screen and (max-width: 768px) {
+  .contact-form-container {
+    padding: var(--spacing-xl);
+    border-radius: var(--radius-md);
+  }
+
+  .form-title {
+    font-size: 1.5rem;
+  }
+  
+  .form-buttons {
+    flex-direction: column-reverse;
+  }
+  
+  .form-buttons button {
+    width: 100%;
+  }
+  
+  .radio-option {
+    min-width: 100%;
+  }
+
+  .form-progress {
+    margin-bottom: var(--spacing-2xl);
+  }
+
+  .step-label {
+    font-size: 0.75rem;
+  }
+
+  .form-success {
+    padding: var(--spacing-3xl) var(--spacing-md);
+  }
+
+  .form-success-icon {
+    width: 64px;
+    height: 64px;
+    font-size: 2rem;
+  }
+}
