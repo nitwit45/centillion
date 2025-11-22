@@ -1,34 +1,28 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useAdmin } from '../contexts/AdminContext';
 import { Button } from '../components/ui/button';
 import { Card } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import {
   LayoutDashboard,
-  User,
+  Users,
   FileText,
   ClipboardList,
   LogOut,
   Menu,
   X,
-  CheckCircle2,
-  Clock,
-  AlertCircle,
-  XCircle
+  Shield,
+  Settings
 } from 'lucide-react';
 
-const DashboardLayout: React.FC = () => {
-  const { user, logout, refreshUser } = useAuth();
+const AdminLayout: React.FC = () => {
+  const { user, logout } = useAuth();
+  const { stats } = useAdmin();
   const navigate = useNavigate();
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  // Refresh user data when dashboard loads to ensure status is up to date
-  useEffect(() => {
-    refreshUser();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run once on mount
 
   const handleLogout = () => {
     logout();
@@ -37,61 +31,43 @@ const DashboardLayout: React.FC = () => {
 
   const menuItems = [
     {
-      path: '/dashboard',
+      path: '/admin',
       label: 'Dashboard',
       icon: <LayoutDashboard className="h-5 w-5" />,
     },
     {
-      path: '/dashboard/profile',
-      label: 'Profile',
-      icon: <User className="h-5 w-5" />,
+      path: '/admin/users',
+      label: 'Users',
+      icon: <Users className="h-5 w-5" />,
+      badge: stats ? stats.users.total : null,
     },
     {
-      path: '/dashboard/documents',
+      path: '/admin/forms',
+      label: 'Forms',
+      icon: <ClipboardList className="h-5 w-5" />,
+      badge: stats ? stats.forms.submitted + stats.forms.underReview : null,
+    },
+    {
+      path: '/admin/documents',
       label: 'Documents',
       icon: <FileText className="h-5 w-5" />,
     },
-    {
-      path: '/dashboard/treatment-form',
-      label: 'Treatment Form',
-      icon: <ClipboardList className="h-5 w-5" />,
-    },
   ];
-
-  const getStatusBadge = () => {
-    if (!user) return null;
-
-    const statusConfig = {
-      draft: { icon: <Clock className="h-3 w-3" />, label: 'Draft', variant: 'secondary' as const },
-      submitted: { icon: <CheckCircle2 className="h-3 w-3" />, label: 'Submitted', variant: 'default' as const },
-      under_review: { icon: <AlertCircle className="h-3 w-3" />, label: 'Under Review', variant: 'outline' as const },
-      approved: { icon: <CheckCircle2 className="h-3 w-3" />, label: 'Approved', variant: 'default' as const },
-      rejected: { icon: <XCircle className="h-3 w-3" />, label: 'Rejected', variant: 'destructive' as const },
-    };
-
-    const config = statusConfig[user.beautyFormStatus];
-    return (
-      <Badge variant={config.variant} className="flex items-center gap-1">
-        {config.icon}
-        {config.label}
-      </Badge>
-    );
-  };
 
   const Sidebar = ({ mobile = false }: { mobile?: boolean }) => (
     <div className={`${mobile ? 'flex flex-col h-full' : ''} space-y-4`}>
       <div className="px-6 py-4">
         <h2 className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-          Centillion Gateway
+          Admin Panel
         </h2>
-        <p className="text-sm text-muted-foreground mt-1">Beauty Enhancement Portal</p>
+        <p className="text-sm text-muted-foreground mt-1">Centillion Gateway</p>
       </div>
 
       {user && (
         <Card className="mx-4 p-4">
           <div className="flex items-center gap-3">
-            <div className="h-12 w-12 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center text-white font-bold text-lg">
-              {user.fullName.charAt(0).toUpperCase()}
+            <div className="h-12 w-12 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
+              <Shield className="h-6 w-6" />
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-semibold truncate">{user.fullName}</p>
@@ -100,8 +76,11 @@ const DashboardLayout: React.FC = () => {
           </div>
           <div className="mt-3 pt-3 border-t">
             <div className="flex items-center justify-between text-xs">
-              <span className="text-muted-foreground">Status:</span>
-              {getStatusBadge()}
+              <span className="text-muted-foreground">Role:</span>
+              <Badge variant="default" className="bg-purple-500">
+                <Shield className="h-3 w-3 mr-1" />
+                Admin
+              </Badge>
             </div>
           </div>
         </Card>
@@ -122,12 +101,25 @@ const DashboardLayout: React.FC = () => {
             >
               {item.icon}
               <span className="ml-3">{item.label}</span>
+              {item.badge && (
+                <Badge variant="secondary" className="ml-auto text-xs">
+                  {item.badge}
+                </Badge>
+              )}
             </Button>
           );
         })}
       </nav>
 
       <div className="px-4 pb-4">
+        <Button
+          variant="outline"
+          className="w-full justify-start mb-2"
+          onClick={() => navigate('/dashboard')}
+        >
+          <Settings className="h-5 w-5" />
+          <span className="ml-3">User Dashboard</span>
+        </Button>
         <Button variant="outline" className="w-full justify-start" onClick={handleLogout}>
           <LogOut className="h-5 w-5" />
           <span className="ml-3">Logout</span>
@@ -178,7 +170,7 @@ const DashboardLayout: React.FC = () => {
           >
             <Menu className="h-5 w-5" />
           </Button>
-          <h1 className="font-bold">Centillion Gateway</h1>
+          <h1 className="font-bold">Admin Panel</h1>
           <div className="w-10" /> {/* Spacer */}
         </header>
 
@@ -193,7 +185,4 @@ const DashboardLayout: React.FC = () => {
   );
 };
 
-export default DashboardLayout;
-
-
-
+export default AdminLayout;

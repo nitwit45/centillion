@@ -10,6 +10,9 @@ import { User, Mail, Phone, MapPin, Calendar, CheckCircle2, Edit } from 'lucide-
 const ProfilePage: React.FC = () => {
   const { user, updateUser } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     fullName: user?.fullName || '',
     age: user?.age || '',
@@ -21,10 +24,21 @@ const ProfilePage: React.FC = () => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    updateUser(formData);
-    setIsEditing(false);
+    setIsLoading(true);
+    setError(null);
+    setSuccessMessage(null);
+
+    try {
+      await updateUser(formData);
+      setSuccessMessage('Profile updated successfully!');
+      setIsEditing(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to update profile');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleCancel = () => {
@@ -78,7 +92,11 @@ const ProfilePage: React.FC = () => {
               <CardDescription>Your account details and contact information</CardDescription>
             </div>
             {!isEditing && (
-              <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>
+              <Button variant="outline" size="sm" onClick={() => {
+                setIsEditing(true);
+                setError(null);
+                setSuccessMessage(null);
+              }}>
                 <Edit className="h-4 w-4 mr-2" />
                 Edit
               </Button>
@@ -139,6 +157,18 @@ const ProfilePage: React.FC = () => {
               </div>
             ) : (
               <form onSubmit={handleSubmit} className="space-y-4">
+                {error && (
+                  <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800">
+                    <p className="text-sm text-red-900 dark:text-red-100">{error}</p>
+                  </div>
+                )}
+
+                {successMessage && (
+                  <div className="p-3 rounded-lg bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800">
+                    <p className="text-sm text-green-900 dark:text-green-100">{successMessage}</p>
+                  </div>
+                )}
+
                 <div className="space-y-2">
                   <Label htmlFor="fullName">Full Name</Label>
                   <Input
@@ -147,6 +177,7 @@ const ProfilePage: React.FC = () => {
                     value={formData.fullName}
                     onChange={handleChange}
                     required
+                    disabled={isLoading}
                   />
                 </div>
 
@@ -158,6 +189,7 @@ const ProfilePage: React.FC = () => {
                     value={formData.age}
                     onChange={handleChange}
                     required
+                    disabled={isLoading}
                   />
                 </div>
 
@@ -170,6 +202,7 @@ const ProfilePage: React.FC = () => {
                     value={formData.phone}
                     onChange={handleChange}
                     required
+                    disabled={isLoading}
                   />
                 </div>
 
@@ -181,16 +214,31 @@ const ProfilePage: React.FC = () => {
                     value={formData.country}
                     onChange={handleChange}
                     required
+                    disabled={isLoading}
                   />
                 </div>
 
                 <div className="flex gap-2 justify-end">
-                  <Button type="button" variant="outline" onClick={handleCancel}>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleCancel}
+                    disabled={isLoading}
+                  >
                     Cancel
                   </Button>
-                  <Button type="submit">
-                    <CheckCircle2 className="h-4 w-4 mr-2" />
-                    Save Changes
+                  <Button type="submit" disabled={isLoading}>
+                    {isLoading ? (
+                      <>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="h-4 w-4 mr-2" />
+                        Save Changes
+                      </>
+                    )}
                   </Button>
                 </div>
               </form>
@@ -235,4 +283,6 @@ const ProfilePage: React.FC = () => {
 };
 
 export default ProfilePage;
+
+
 

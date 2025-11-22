@@ -11,7 +11,10 @@ import {
   CheckCircle2,
   Clock,
   AlertCircle,
-  ArrowRight
+  ArrowRight,
+  Calendar,
+  TrendingUp,
+  Activity
 } from 'lucide-react';
 
 const DashboardHome: React.FC = () => {
@@ -141,6 +144,76 @@ const DashboardHome: React.FC = () => {
         </Card>
       )}
 
+      {/* Statistics Overview */}
+      <div className="grid gap-6 md:grid-cols-4">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center space-x-2">
+              <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
+                <CheckCircle2 className="h-4 w-4 text-green-600 dark:text-green-400" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Profile Status</p>
+                <p className="text-lg font-semibold">
+                  {user?.profileCompleted ? 'Complete' : 'Incomplete'}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center space-x-2">
+              <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
+                <ClipboardList className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Form Status</p>
+                <p className="text-lg font-semibold">
+                  {user?.beautyFormSubmitted ? 'Submitted' : 'Draft'}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center space-x-2">
+              <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
+                <Calendar className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Member Since</p>
+                <p className="text-lg font-semibold">
+                  {new Date(user?.createdAt || '').toLocaleDateString('en-US', {
+                    month: 'short',
+                    year: 'numeric'
+                  })}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center space-x-2">
+              <div className="p-2 bg-orange-100 dark:bg-orange-900 rounded-lg">
+                <TrendingUp className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground">Account Status</p>
+                <p className="text-lg font-semibold">
+                  {user?.beautyFormStatus.replace('_', ' ').toUpperCase()}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Quick Links */}
       <div>
         <h2 className="text-xl font-semibold mb-4">Quick Links</h2>
@@ -168,6 +241,133 @@ const DashboardHome: React.FC = () => {
             </Card>
           ))}
         </div>
+      </div>
+
+      {/* Recent Activity */}
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Activity className="h-5 w-5" />
+              Recent Activity
+            </CardTitle>
+            <CardDescription>Your account activity timeline</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-start gap-3">
+                <div className="p-2 bg-green-100 dark:bg-green-900 rounded-lg">
+                  <CheckCircle2 className="h-3 w-3 text-green-600 dark:text-green-400" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium">Account Created</p>
+                  <p className="text-xs text-muted-foreground">
+                    {new Date(user?.createdAt || '').toLocaleDateString('en-US', {
+                      weekday: 'short',
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric'
+                    })}
+                  </p>
+                </div>
+              </div>
+
+              {user?.profileCompleted && (
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-blue-100 dark:bg-blue-900 rounded-lg">
+                    <User className="h-3 w-3 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">Profile Completed</p>
+                    <p className="text-xs text-muted-foreground">All personal information updated</p>
+                  </div>
+                </div>
+              )}
+
+              {user?.beautyFormSubmitted && (
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-purple-100 dark:bg-purple-900 rounded-lg">
+                    <ClipboardList className="h-3 w-3 text-purple-600 dark:text-purple-400" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">Treatment Form Submitted</p>
+                    <p className="text-xs text-muted-foreground">Beauty treatment request submitted</p>
+                  </div>
+                </div>
+              )}
+
+              {user?.beautyFormStatus === 'under_review' && (
+                <div className="flex items-start gap-3">
+                  <div className="p-2 bg-orange-100 dark:bg-orange-900 rounded-lg">
+                    <AlertCircle className="h-3 w-3 text-orange-600 dark:text-orange-400" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">Under Medical Review</p>
+                    <p className="text-xs text-muted-foreground">Our team is reviewing your request</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-primary/5 to-secondary/5">
+          <CardHeader>
+            <CardTitle>Next Steps</CardTitle>
+            <CardDescription>What happens next in your journey</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {!user?.profileCompleted && (
+                <div className="flex items-start gap-3 p-3 rounded-lg bg-white/50 dark:bg-black/20">
+                  <div className="p-1">
+                    <div className="h-2 w-2 bg-yellow-500 rounded-full"></div>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">Complete Your Profile</p>
+                    <p className="text-xs text-muted-foreground">Update your personal information</p>
+                  </div>
+                </div>
+              )}
+
+              {!user?.beautyFormSubmitted && (
+                <div className="flex items-start gap-3 p-3 rounded-lg bg-white/50 dark:bg-black/20">
+                  <div className="p-1">
+                    <div className="h-2 w-2 bg-blue-500 rounded-full"></div>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">Submit Treatment Form</p>
+                    <p className="text-xs text-muted-foreground">Complete your beauty treatment questionnaire</p>
+                  </div>
+                </div>
+              )}
+
+              {user?.beautyFormSubmitted && user?.beautyFormStatus === 'submitted' && (
+                <div className="flex items-start gap-3 p-3 rounded-lg bg-white/50 dark:bg-black/20">
+                  <div className="p-1">
+                    <div className="h-2 w-2 bg-purple-500 rounded-full"></div>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">Await Medical Review</p>
+                    <p className="text-xs text-muted-foreground">Our team will contact you within 2-3 business days</p>
+                  </div>
+                </div>
+              )}
+
+              {user?.beautyFormStatus === 'approved' && (
+                <div className="flex items-start gap-3 p-3 rounded-lg bg-white/50 dark:bg-black/20">
+                  <div className="p-1">
+                    <div className="h-2 w-2 bg-green-500 rounded-full"></div>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">Treatment Planning</p>
+                    <p className="text-xs text-muted-foreground">Discuss treatment options and scheduling</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Information Card */}
@@ -198,4 +398,6 @@ const DashboardHome: React.FC = () => {
 };
 
 export default DashboardHome;
+
+
 

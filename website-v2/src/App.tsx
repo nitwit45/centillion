@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { AdminProvider } from './contexts/AdminContext';
 
 // Layout Components
 import NavbarNew from './components/layout/NavbarNew';
@@ -17,6 +18,7 @@ import ContactNew from './components/sections/ContactNew';
 // Auth Pages
 import LoginPage from './pages/LoginPage';
 import ChangePasswordPage from './pages/ChangePasswordPage';
+import EmailVerificationPage from './pages/EmailVerificationPage';
 
 // Dashboard Pages
 import DashboardLayout from './pages/DashboardLayout';
@@ -25,8 +27,16 @@ import ProfilePage from './pages/ProfilePage';
 import DocumentsPage from './pages/DocumentsPage';
 import TreatmentFormPage from './pages/TreatmentFormPage';
 
-// Protected Route
+// Admin Pages
+import AdminLayout from './pages/AdminLayout';
+import AdminDashboardPage from './pages/AdminDashboardPage';
+import AdminUsersPage from './pages/AdminUsersPage';
+import AdminFormsPage from './pages/AdminFormsPage';
+import AdminDocumentsPage from './pages/AdminDocumentsPage';
+
+// Protected Routes
 import ProtectedRoute from './components/ProtectedRoute';
+import AdminProtectedRoute from './components/AdminProtectedRoute';
 
 // Landing Page Component
 const LandingPage: React.FC = () => {
@@ -76,13 +86,15 @@ function App() {
   return (
     <Router>
       <AuthProvider>
+        <AdminProvider>
         <Routes>
           {/* Public Routes */}
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/verify-email" element={<EmailVerificationPage />} />
           <Route path="/change-password" element={<ChangePasswordPage />} />
 
-          {/* Protected Dashboard Routes */}
+            {/* Protected User Dashboard Routes */}
           <Route
             path="/dashboard"
             element={
@@ -96,7 +108,23 @@ function App() {
             <Route path="documents" element={<DocumentsPage />} />
             <Route path="treatment-form" element={<TreatmentFormPage />} />
           </Route>
+
+            {/* Protected Admin Routes */}
+            <Route
+              path="/admin"
+              element={
+                <AdminProtectedRoute>
+                  <AdminLayout />
+                </AdminProtectedRoute>
+              }
+            >
+              <Route index element={<AdminDashboardPage />} />
+              <Route path="users" element={<AdminUsersPage />} />
+              <Route path="forms" element={<AdminFormsPage />} />
+              <Route path="documents" element={<AdminDocumentsPage />} />
+            </Route>
         </Routes>
+        </AdminProvider>
       </AuthProvider>
     </Router>
   );

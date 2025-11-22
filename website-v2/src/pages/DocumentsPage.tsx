@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
-import { FileText, Upload, Trash2, Download, CheckCircle2, AlertCircle } from 'lucide-react';
+import { FileText, Upload, Trash2, Download, CheckCircle2, AlertCircle, Plus } from 'lucide-react';
 
 interface Document {
   id: string;
@@ -11,57 +11,135 @@ interface Document {
   size: string;
   uploadedAt: string;
   type: string;
+  category: string;
 }
+
+type DocumentCategory = 'consent_form' | 'medical_history' | 'id_proof' | 'passport_copy';
 
 const DocumentsPage: React.FC = () => {
   const { user } = useAuth();
   const [documents, setDocuments] = useState<Document[]>([]);
-  const [uploading, setUploading] = useState(false);
+  const [uploadingCategories, setUploadingCategories] = useState<string[]>([]);
 
   useEffect(() => {
-    // Load documents from localStorage
-    if (user) {
-      const savedDocs = localStorage.getItem(`documents_${user.id}`);
-      if (savedDocs) {
-        setDocuments(JSON.parse(savedDocs));
+    // Load documents from backend
+    const fetchDocuments = async () => {
+      if (user) {
+        try {
+          const token = localStorage.getItem('token');
+          const response = await fetch('http://localhost:5001/api/documents', {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+          });
+          const data = await response.json();
+          if (data.success) {
+            const formattedDocs = data.documents.map((doc: any) => ({
+              id: doc.id,
+              name: doc.name,
+              size: formatFileSize(doc.size),
+              uploadedAt: doc.uploadedAt,
+              type: doc.mimeType,
+              category: doc.category,
+            }));
+            setDocuments(formattedDocs);
+          }
+        } catch (error) {
+          console.error('Error fetching documents:', error);
+        }
       }
-    }
+    };
+
+    fetchDocuments();
   }, [user]);
 
-  const saveDocuments = (docs: Document[]) => {
-    if (user) {
-      localStorage.setItem(`documents_${user.id}`, JSON.stringify(docs));
-      setDocuments(docs);
-    }
-  };
-
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (category: DocumentCategory, event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
 
-    setUploading(true);
+    setUploadingCategories(prev => [...prev, category]);
 
-    // Simulate upload delay
-    setTimeout(() => {
-      const newDocuments: Document[] = Array.from(files).map(file => ({
-        id: `doc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        name: file.name,
-        size: formatFileSize(file.size),
-        uploadedAt: new Date().toISOString(),
-        type: file.type || 'application/octet-stream',
-      }));
+    const file = files[0]; // Take only the first file
+    
+    try {
+      // Convert file to base64
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const fileData = e.target?.result as string;
+        
+        const token = localStorage.getItem('token');
+        const response = await fetch('http://localhost:5001/api/documents', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: file.name,
+            originalName: file.name,
+            size: file.size,
+            mimeType: file.type || 'application/octet-stream',
+            category,
+            fileData,
+          }),
+        });
 
-      saveDocuments([...documents, ...newDocuments]);
-      setUploading(false);
+        const data = await response.json();
+        
+        if (data.success) {
+          // Add new document to list
+          const newDoc: Document = {
+            id: data.document.id,
+            name: data.document.name,
+            size: formatFileSize(data.document.size),
+            uploadedAt: data.document.uploadedAt,
+            type: data.document.mimeType,
+            category: data.document.category,
+          };
+          
+          // Replace existing document in same category or add new
+          const updatedDocs = documents.filter(doc => doc.category !== category);
+          setDocuments([...updatedDocs, newDoc]);
+        } else {
+          alert(`Error uploading document: ${data.error}`);
+        }
+        
+        setUploadingCategories(prev => prev.filter(cat => cat !== category));
+        event.target.value = '';
+      };
       
-      // Reset input
-      event.target.value = '';
-    }, 1500);
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('Error uploading document:', error);
+      alert('Error uploading document. Please try again.');
+      setUploadingCategories(prev => prev.filter(cat => cat !== category));
+    }
   };
 
-  const handleDelete = (docId: string) => {
-    const updatedDocs = documents.filter(doc => doc.id !== docId);
-    saveDocuments(updatedDocs);
+  const handleDelete = async (docId: string) => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch(`http://localhost:5001/api/documents/${docId}`, {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+      
+      if (data.success) {
+        const updatedDocs = documents.filter(doc => doc.id !== docId);
+        setDocuments(updatedDocs);
+      } else {
+        alert(`Error deleting document: ${data.error}`);
+      }
+    } catch (error) {
+      console.error('Error deleting document:', error);
+      alert('Error deleting document. Please try again.');
+    }
   };
 
   const formatFileSize = (bytes: number): string => {
@@ -79,28 +157,52 @@ const DocumentsPage: React.FC = () => {
     return '📎';
   };
 
-  const requiredDocuments = [
+  const documentCategories = [
     {
+      key: 'consent_form' as DocumentCategory,
       title: 'Consent Form',
       description: 'Signed consent form for beauty treatment procedures',
       required: true,
+      icon: '📝',
     },
     {
+      key: 'medical_history' as DocumentCategory,
       title: 'Medical History',
       description: 'Complete medical history and allergy information',
       required: true,
+      icon: '🏥',
     },
     {
+      key: 'id_proof' as DocumentCategory,
       title: 'ID Proof',
       description: 'Valid government-issued identification document',
       required: true,
+      icon: '🆔',
     },
     {
+      key: 'passport_copy' as DocumentCategory,
       title: 'Passport Copy',
       description: 'Clear copy of your passport (if traveling internationally)',
       required: false,
+      icon: '🛂',
     },
   ];
+
+  const getDocumentsByCategory = (category: string) => {
+    return documents.filter(doc => doc.category === category);
+  };
+
+  const getTotalUploadedDocuments = () => {
+    return documents.length;
+  };
+
+  const getRequiredDocumentsUploaded = () => {
+    return documentCategories.filter(cat => cat.required && getDocumentsByCategory(cat.key).length > 0).length;
+  };
+
+  const getTotalRequiredDocuments = () => {
+    return documentCategories.filter(cat => cat.required).length;
+  };
 
   return (
     <div className="space-y-6">
@@ -111,144 +213,148 @@ const DocumentsPage: React.FC = () => {
         </p>
       </div>
 
-      {/* Upload Section */}
+      {/* Progress Overview */}
       <Card>
-        <CardHeader>
-          <CardTitle>Upload Documents</CardTitle>
-          <CardDescription>
-            Upload your signed consent forms, medical records, and identification documents
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="border-2 border-dashed rounded-lg p-8 text-center">
-            <div className="flex flex-col items-center gap-4">
-              <div className="p-4 rounded-full bg-primary/10">
-                <Upload className="h-8 w-8 text-primary" />
-              </div>
+        <CardContent className="pt-6">
+          <div className="flex items-center justify-between mb-4">
               <div>
-                <h3 className="font-semibold mb-1">Upload your documents</h3>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Drag and drop or click to browse (PDF, DOC, JPG, PNG - Max 10MB)
-                </p>
-              </div>
-              <div className="relative">
-                <input
-                  type="file"
-                  multiple
-                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                  onChange={handleFileUpload}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                  disabled={uploading}
-                />
-                <Button disabled={uploading}>
-                  {uploading ? 'Uploading...' : 'Choose Files'}
-                </Button>
-              </div>
+              <h3 className="font-semibold">Document Upload Progress</h3>
+              <p className="text-sm text-muted-foreground">
+                {getRequiredDocumentsUploaded()} of {getTotalRequiredDocuments()} required documents uploaded
+              </p>
             </div>
+            <Badge variant={getRequiredDocumentsUploaded() === getTotalRequiredDocuments() ? "default" : "secondary"}>
+              {getRequiredDocumentsUploaded()}/{getTotalRequiredDocuments()} Required
+            </Badge>
+          </div>
+          <div className="w-full bg-muted rounded-full h-2">
+            <div
+              className="bg-primary h-2 rounded-full transition-all duration-300"
+              style={{ width: `${(getRequiredDocumentsUploaded() / getTotalRequiredDocuments()) * 100}%` }}
+            ></div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Required Documents Checklist */}
-      <Card>
+      {/* Document Categories */}
+      <div className="grid gap-6 md:grid-cols-2">
+        {documentCategories.map((category) => {
+          const categoryDocs = getDocumentsByCategory(category.key);
+          const isUploading = uploadingCategories.includes(category.key);
+          const hasDocuments = categoryDocs.length > 0;
+
+          return (
+            <Card key={category.key} className={`${hasDocuments ? 'ring-2 ring-primary/20' : ''}`}>
         <CardHeader>
-          <CardTitle>Required Documents</CardTitle>
-          <CardDescription>
-            Please ensure all required documents are uploaded before submitting your treatment form
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            {requiredDocuments.map((doc, index) => (
-              <div
-                key={index}
-                className="flex items-center justify-between p-4 rounded-lg border bg-muted/20"
-              >
+                <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-md bg-background">
-                    <FileText className="h-5 w-5 text-primary" />
-                  </div>
+                    <span className="text-2xl">{category.icon}</span>
                   <div>
-                    <h4 className="font-medium flex items-center gap-2">
-                      {doc.title}
-                      {doc.required && (
+                      <CardTitle className="flex items-center gap-2">
+                        {category.title}
+                        {category.required && (
                         <Badge variant="destructive" className="text-xs">Required</Badge>
                       )}
-                    </h4>
-                    <p className="text-sm text-muted-foreground">{doc.description}</p>
+                      </CardTitle>
+                      <CardDescription>{category.description}</CardDescription>
+                    </div>
                   </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Uploaded Documents */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Uploaded Documents</CardTitle>
-              <CardDescription>
-                {documents.length} document(s) uploaded
-              </CardDescription>
-            </div>
-            {documents.length > 0 && (
-              <Badge variant="outline">
-                <CheckCircle2 className="h-3 w-3 mr-1" />
-                {documents.length} Files
+                  {hasDocuments && (
+                    <Badge variant="outline" className="flex items-center gap-1">
+                      <CheckCircle2 className="h-3 w-3" />
+                      {categoryDocs.length}
               </Badge>
             )}
           </div>
         </CardHeader>
         <CardContent>
-          {documents.length === 0 ? (
-            <div className="text-center py-8">
-              <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-              <p className="text-muted-foreground">No documents uploaded yet</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Upload your documents to get started
-              </p>
-            </div>
-          ) : (
+                {hasDocuments ? (
             <div className="space-y-2">
-              {documents.map((doc) => (
+                    {categoryDocs.map((doc) => (
                 <div
                   key={doc.id}
-                  className="flex items-center justify-between p-4 rounded-lg border bg-background hover:bg-muted/20 transition-colors"
+                        className="flex items-center justify-between p-3 rounded-lg border bg-muted/20"
                 >
                   <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <span className="text-2xl">{getFileIcon(doc.type)}</span>
+                          <span className="text-lg">{getFileIcon(doc.type)}</span>
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium truncate">{doc.name}</p>
+                            <p className="font-medium truncate text-sm">{doc.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {doc.size} • Uploaded {new Date(doc.uploadedAt).toLocaleDateString()}
+                              {doc.size} • {new Date(doc.uploadedAt).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1">
                     <Button
                       variant="ghost"
                       size="icon"
+                            className="h-8 w-8"
                       onClick={() => alert('Download functionality - In production, this would download the file')}
                     >
-                      <Download className="h-4 w-4" />
+                            <Download className="h-3 w-3" />
                     </Button>
                     <Button
                       variant="ghost"
                       size="icon"
+                            className="h-8 w-8"
                       onClick={() => handleDelete(doc.id)}
+                          >
+                            <Trash2 className="h-3 w-3 text-destructive" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="border-2 border-dashed rounded-lg p-4 text-center">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="p-3 rounded-full bg-muted">
+                        <Upload className="h-5 w-5 text-muted-foreground" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium mb-1">No documents uploaded</p>
+                        <p className="text-xs text-muted-foreground mb-3">
+                          Upload your {category.title.toLowerCase()}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Upload Button */}
+                <div className="mt-4">
+                  <div className="relative">
+                    <input
+                      type="file"
+                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                      onChange={(e) => handleFileUpload(category.key, e)}
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                      disabled={isUploading}
+                    />
+                    <Button
+                      variant="outline"
+                      className="w-full"
+                      disabled={isUploading}
                     >
-                      <Trash2 className="h-4 w-4 text-destructive" />
+                      {isUploading ? (
+                        <>
+                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary mr-2"></div>
+                          Uploading...
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="h-4 w-4 mr-2" />
+                          Upload {category.title}
+                        </>
+                      )}
                     </Button>
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
         </CardContent>
       </Card>
+          );
+        })}
+      </div>
 
       {/* Information Card */}
       <Card className="bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
@@ -262,6 +368,7 @@ const DocumentsPage: React.FC = () => {
                 <li>Signed consent forms are required before treatment</li>
                 <li>Your documents are stored securely and kept confidential</li>
                 <li>Maximum file size: 10MB per document</li>
+                <li>Supported formats: PDF, DOC, DOCX, JPG, PNG</li>
               </ul>
             </div>
           </div>
@@ -272,4 +379,6 @@ const DocumentsPage: React.FC = () => {
 };
 
 export default DocumentsPage;
+
+
 

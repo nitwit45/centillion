@@ -22,7 +22,7 @@ const ChangePasswordPage: React.FC = () => {
     }
   }, [user, navigate]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess(false);
@@ -37,14 +37,14 @@ const ChangePasswordPage: React.FC = () => {
       return;
     }
 
-    const updated = updatePassword(oldPassword, newPassword);
-    if (updated) {
+    const result = await updatePassword(user?.passwordSet ? oldPassword : '', newPassword);
+    if (result.success) {
       setSuccess(true);
       setTimeout(() => {
         navigate('/dashboard');
       }, 2000);
     } else {
-      setError('Current password is incorrect');
+      setError(result.error || 'Failed to update password');
     }
   };
 
@@ -71,12 +71,12 @@ const ChangePasswordPage: React.FC = () => {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-3xl font-bold">
-            {user?.isFirstLogin ? 'Change Your Password' : 'Update Password'}
+            {user?.passwordSet ? 'Update Password' : 'Set Your Password'}
           </CardTitle>
           <CardDescription>
-            {user?.isFirstLogin
-              ? 'Please change your temporary password to continue'
-              : 'Enter your current and new password'}
+            {user?.passwordSet
+              ? 'Enter your current and new password'
+              : 'Create a secure password for your account'}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -88,19 +88,19 @@ const ChangePasswordPage: React.FC = () => {
               </div>
             )}
             
-            <div className="space-y-2">
-              <Label htmlFor="oldPassword">
-                {user?.isFirstLogin ? 'Temporary Password' : 'Current Password'}
-              </Label>
-              <Input
-                id="oldPassword"
-                type="password"
-                value={oldPassword}
-                onChange={(e) => setOldPassword(e.target.value)}
-                required
-                placeholder="Enter current password"
-              />
-            </div>
+            {user?.passwordSet && (
+              <div className="space-y-2">
+                <Label htmlFor="oldPassword">Current Password</Label>
+                <Input
+                  id="oldPassword"
+                  type="password"
+                  value={oldPassword}
+                  onChange={(e) => setOldPassword(e.target.value)}
+                  required
+                  placeholder="Enter current password"
+                />
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="newPassword">New Password</Label>
@@ -137,4 +137,6 @@ const ChangePasswordPage: React.FC = () => {
 };
 
 export default ChangePasswordPage;
+
+
 

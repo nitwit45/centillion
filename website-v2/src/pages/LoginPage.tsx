@@ -14,15 +14,21 @@ const LoginPage: React.FC = () => {
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    const success = login(email, password);
-    if (success) {
-      navigate('/dashboard');
-    } else {
-      setError('Invalid email or password');
+    const result = await login(email, password, (user) => {
+      // Redirect based on user role
+      if (user.role === 'admin') {
+        navigate('/admin');
+      } else {
+        navigate('/dashboard');
+      }
+    });
+
+    if (!result.success) {
+      setError(result.error || 'Login failed');
     }
   };
 
@@ -93,4 +99,6 @@ const LoginPage: React.FC = () => {
 };
 
 export default LoginPage;
+
+
 

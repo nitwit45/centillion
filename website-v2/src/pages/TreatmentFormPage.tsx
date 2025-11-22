@@ -7,7 +7,7 @@ import { Label } from '../components/ui/label';
 import { Textarea } from '../components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
 import { Badge } from '../components/ui/badge';
-import { CheckCircle2, ArrowRight, ArrowLeft, Save, Send } from 'lucide-react';
+import { CheckCircle2, ArrowRight, ArrowLeft, Save, Send, AlertCircle } from 'lucide-react';
 
 interface TreatmentFormData {
   // Personal Info
@@ -41,8 +41,9 @@ interface TreatmentFormData {
 }
 
 const TreatmentFormPage: React.FC = () => {
-  const { user, updateUser } = useAuth();
+  const { user, getTreatmentForm, saveTreatmentForm, submitTreatmentForm, refreshUser } = useAuth();
   const [step, setStep] = useState(1);
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState<TreatmentFormData>({
     dateOfBirth: '',
     gender: '',
@@ -64,19 +65,50 @@ const TreatmentFormPage: React.FC = () => {
   });
 
   useEffect(() => {
-    // Load saved form data
-    if (user) {
-      const saved = localStorage.getItem(`treatment_form_${user.id}`);
-      if (saved) {
-        setFormData(JSON.parse(saved));
+    // Load saved form data from backend
+    const loadFormData = async () => {
+      if (user) {
+        setIsLoading(true);
+        try {
+          const result = await getTreatmentForm();
+          if (result.success && result.data) {
+            setFormData(result.data);
+          }
+        } catch (error) {
+          console.error('Error loading form data:', error);
+        } finally {
+          setIsLoading(false);
+        }
       }
-    }
-  }, [user]);
+    };
 
-  const saveDraft = () => {
+    loadFormData();
+  }, [user, getTreatmentForm]);
+
+  // Refresh user data when success screen is shown (step 7)
+  useEffect(() => {
+    if (step === 7) {
+      refreshUser();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]); // Only run when step changes
+
+  const saveDraft = async () => {
     if (user) {
-      localStorage.setItem(`treatment_form_${user.id}`, JSON.stringify(formData));
-      alert('Draft saved successfully!');
+      setIsLoading(true);
+      try {
+        const result = await saveTreatmentForm(formData);
+        if (result.success) {
+          alert('Draft saved successfully!');
+        } else {
+          alert(`Error saving draft: ${result.error}`);
+        }
+      } catch (error) {
+        console.error('Error saving draft:', error);
+        alert('Error saving draft. Please try again.');
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
@@ -89,49 +121,101 @@ const TreatmentFormPage: React.FC = () => {
     setFormData({ ...formData, [category]: newArray });
   };
 
-  const handleSubmit = () => {
+  const checkRequiredDocuments = () => {
+    if (!user) return false;
+
+    const savedDocs = localStorage.getItem(`documents_${user.id}`);
+    if (!savedDocs) return false;
+
+    const documents = JSON.parse(savedDocs);
+    const requiredCategories = ['consent_form', 'medical_history', 'id_proof'];
+
+    return requiredCategories.every(category =>
+      documents.some((doc: any) => doc.category === category)
+    );
+  };
+
+  const handleSubmit = async () => {
+    // Check if required documents are uploaded
+    if (!checkRequiredDocuments()) {
+      alert('Please upload all required documents (Consent Form, Medical History, and ID Proof) before submitting the form.');
+      return;
+    }
+
     if (user) {
-      localStorage.setItem(`treatment_form_${user.id}`, JSON.stringify(formData));
-      updateUser({
-        beautyFormSubmitted: true,
-        beautyFormStatus: 'submitted',
-      });
-      setStep(7); // Success screen
+      setIsLoading(true);
+      try {
+        const result = await submitTreatmentForm();
+        if (result.success) {
+          setStep(7); // Success screen
+        } else {
+          alert(`Error submitting form: ${result.error}`);
+        }
+      } catch (error) {
+        console.error('Error submitting form:', error);
+        alert('Error submitting form. Please try again.');
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
-  // Show form based on purpose selections
+  // Dynamic form logic based on selections
   const showSurgicalTreatments = formData.purposeOfVisit.includes('Cosmetic Surgery');
   const showNonSurgicalTreatments = formData.purposeOfVisit.includes('Non-Surgical Beauty Treatment');
   const showTransgenderTreatments = formData.purposeOfVisit.includes('Gender-Affirming or Transgender Transformation');
+  const showWellnessProgram = formData.purposeOfVisit.includes('Wellness & Detox Program');
+  const showAntiAging = formData.purposeOfVisit.includes('Rejuvenation / Anti-Aging Package');
 
-  // Calculate which steps are actually needed
-  const getActiveSteps = () => {
-    const steps = [1, 2]; // Step 1 and 2 are always shown
+  // Dynamic options based on gender
+  const getGenderSpecificOptions = (category: string) => {
+    if (category === 'breastChest') {
+      if (formData.gender === 'Male' || formData.gender === 'Transgender') {
+        return [
+          'Breast Augmentation',
+          'Male Chest Sculpting / Gynecomastia Surgery'
+        ];
+      } else if (formData.gender === 'Female') {
+        return [
+          'Breast Augmentation',
+          'Breast Lift / Firming',
+          'Breast Reduction'
+        ];
+      }
+    }
+    return null; // Return null to use default options
+  };
+
+  // Dynamic step calculation
+  const getDynamicSteps = () => {
+    const steps = [1, 2]; // Personal info and purpose are always required
+
     if (showSurgicalTreatments) steps.push(3);
     if (showNonSurgicalTreatments) steps.push(4);
     if (showTransgenderTreatments) steps.push(5);
-    steps.push(6); // Step 6 is always shown
+    if (showWellnessProgram || showAntiAging) steps.push(6); // Additional services step
+
+    steps.push(7); // Final step with additional info is always last
     return steps;
   };
 
-  const activeSteps = getActiveSteps();
-  const totalSteps = 6;
+  const dynamicSteps = getDynamicSteps();
+  const totalSteps = Math.max(...dynamicSteps);
   const progress = (step / totalSteps) * 100;
 
-  // Navigate to next active step
+  // Navigate to next dynamic step
   const goToNextStep = () => {
-    const currentIndex = activeSteps.indexOf(step);
-    if (currentIndex < activeSteps.length - 1) {
-      setStep(activeSteps[currentIndex + 1]);
+    const currentIndex = dynamicSteps.indexOf(step);
+    if (currentIndex < dynamicSteps.length - 1) {
+      setStep(dynamicSteps[currentIndex + 1]);
     }
   };
 
-  // Navigate to previous active step
+  // Navigate to previous dynamic step
   const goToPreviousStep = () => {
-    const currentIndex = activeSteps.indexOf(step);
+    const currentIndex = dynamicSteps.indexOf(step);
     if (currentIndex > 0) {
-      setStep(activeSteps[currentIndex - 1]);
+      setStep(dynamicSteps[currentIndex - 1]);
     }
   };
 
@@ -148,7 +232,7 @@ const TreatmentFormPage: React.FC = () => {
               Thank you for completing the Beauty Enhancement Treatment Form. Our medical team is reviewing your request and will contact you within 2-3 business days.
             </p>
             <Badge variant="outline" className="mb-6">
-              Status: {user?.beautyFormStatus.replace('_', ' ').toUpperCase()}
+              Status: {(user?.beautyFormStatus === 'submitted' || step === 7) ? 'SUBMITTED' : user?.beautyFormStatus?.replace('_', ' ').toUpperCase()}
             </Badge>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Button variant="outline" onClick={() => window.location.href = '/dashboard'}>
@@ -160,6 +244,19 @@ const TreatmentFormPage: React.FC = () => {
             </div>
           </CardContent>
         </Card>
+      </div>
+    );
+  }
+
+  if (isLoading && !formData.dateOfBirth) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading your form...</p>
+          </div>
+        </div>
       </div>
     );
   }
@@ -200,7 +297,8 @@ const TreatmentFormPage: React.FC = () => {
             {step === 3 && 'Surgical Beauty Treatments'}
             {step === 4 && 'Non-Surgical Beauty Treatments'}
             {step === 5 && 'Transgender & Gender-Affirming Treatments'}
-            {step === 6 && 'Additional Information & Preferences'}
+            {step === 6 && (showWellnessProgram || showAntiAging) ? 'Wellness & Anti-Aging Services' : 'Additional Information & Preferences'}
+            {step === 7 && (showWellnessProgram || showAntiAging) && 'Additional Information & Preferences'}
           </CardTitle>
           <CardDescription>
             {step === 1 && 'Tell us about yourself'}
@@ -208,7 +306,8 @@ const TreatmentFormPage: React.FC = () => {
             {step === 3 && 'Select the surgical procedures you are interested in'}
             {step === 4 && 'Select the non-surgical treatments you would like'}
             {step === 5 && 'Confidential and professional consultation'}
-            {step === 6 && 'Final details to complete your request'}
+            {step === 6 && (showWellnessProgram || showAntiAging) ? 'Enhance your experience with additional services' : 'Final details to complete your request'}
+            {step === 7 && (showWellnessProgram || showAntiAging) && 'Final details to complete your request'}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -260,26 +359,80 @@ const TreatmentFormPage: React.FC = () => {
 
           {/* Step 2: Purpose of Visit */}
           {step === 2 && (
-            <div className="space-y-3">
-              <Label>Please select all that apply *</Label>
-              {[
-                'Cosmetic Surgery',
-                'Non-Surgical Beauty Treatment',
-                'Wellness & Detox Program',
-                'Gender-Affirming or Transgender Transformation',
-                'Rejuvenation / Anti-Aging Package'
-              ].map((purpose) => (
-                <div key={purpose} className="flex items-center space-x-2 rounded-lg border p-3">
-                  <input
-                    type="checkbox"
-                    id={purpose}
-                    checked={formData.purposeOfVisit.includes(purpose)}
-                    onChange={() => handleCheckboxChange('purposeOfVisit', purpose)}
-                    className="h-4 w-4 rounded border-gray-300"
-                  />
-                  <Label htmlFor={purpose} className="flex-1 cursor-pointer">{purpose}</Label>
+            <div className="space-y-6">
+              <div className="space-y-3">
+                <Label>Please select all that apply to your visit *</Label>
+                {[
+                  {
+                    value: 'Cosmetic Surgery',
+                    description: 'Surgical procedures for facial and body enhancement',
+                    recommended: formData.gender === 'Female' || formData.gender === 'Male'
+                  },
+                  {
+                    value: 'Non-Surgical Beauty Treatment',
+                    description: 'Injectables, fillers, laser treatments, and skin care',
+                    recommended: true
+                  },
+                  {
+                    value: 'Wellness & Detox Program',
+                    description: 'Holistic wellness, detox retreats, and recovery programs',
+                    recommended: formData.purposeOfVisit.includes('Rejuvenation / Anti-Aging Package')
+                  },
+                  {
+                    value: 'Gender-Affirming or Transgender Transformation',
+                    description: 'Specialized procedures for gender affirmation',
+                    recommended: formData.gender === 'Transgender' || formData.gender === 'Prefer not to say'
+                  },
+                  {
+                    value: 'Rejuvenation / Anti-Aging Package',
+                    description: 'Comprehensive anti-aging treatments and packages',
+                    recommended: true
+                  }
+                ].map((option) => (
+                  <div key={option.value} className="flex items-start space-x-3 rounded-lg border p-4 hover:bg-muted/50 transition-colors">
+                    <input
+                      type="checkbox"
+                      id={option.value}
+                      checked={formData.purposeOfVisit.includes(option.value)}
+                      onChange={() => handleCheckboxChange('purposeOfVisit', option.value)}
+                      className="h-4 w-4 rounded border-gray-300 mt-1"
+                    />
+                    <div className="flex-1">
+                      <Label htmlFor={option.value} className="flex items-center gap-2 cursor-pointer font-medium">
+                        {option.value}
+                        {option.recommended && (
+                          <Badge variant="secondary" className="text-xs">Recommended</Badge>
+                        )}
+                      </Label>
+                      <p className="text-sm text-muted-foreground mt-1">{option.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Dynamic recommendations based on previous answers */}
+              {formData.gender === 'Transgender' && !formData.purposeOfVisit.includes('Gender-Affirming or Transgender Transformation') && (
+                <div className="p-4 rounded-lg bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800">
+                  <div className="flex gap-3">
+                    <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                    <div className="text-sm text-blue-900 dark:text-blue-100">
+                      <p className="font-semibold mb-1">Gender-Affirming Care</p>
+                      <p className="mb-2">
+                        Based on your gender selection, you may be interested in our specialized gender-affirming treatments.
+                        These can be discussed confidentially with our medical team.
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleCheckboxChange('purposeOfVisit', 'Gender-Affirming or Transgender Transformation')}
+                        className="text-blue-700 dark:text-blue-300 border-blue-300 dark:border-blue-700"
+                      >
+                        Add Gender-Affirming Care
+                      </Button>
+                    </div>
+                  </div>
                 </div>
-              ))}
+              )}
             </div>
           )}
 
@@ -339,12 +492,12 @@ const TreatmentFormPage: React.FC = () => {
                   {/* Breast & Chest */}
                   <div className="space-y-3">
                     <h3 className="font-semibold text-lg">Breast & Chest</h3>
-                    {[
+                    {(getGenderSpecificOptions('breastChest') || [
                       'Breast Augmentation',
                       'Breast Lift / Firming',
                       'Breast Reduction',
                       'Male Chest Sculpting / Gynecomastia Surgery'
-                    ].map((treatment) => (
+                    ]).map((treatment) => (
                       <div key={treatment} className="flex items-center space-x-2 rounded-lg border p-3">
                         <input
                           type="checkbox"
@@ -524,8 +677,69 @@ const TreatmentFormPage: React.FC = () => {
             </div>
           )}
 
-          {/* Step 6: Additional Information */}
-          {step === 6 && (
+          {/* Step 6: Wellness & Anti-Aging Services */}
+          {step === 6 && (showWellnessProgram || showAntiAging) && (
+            <div className="space-y-6">
+              {showWellnessProgram && (
+                <div className="space-y-3">
+                  <h3 className="font-semibold text-lg">Wellness & Detox Programs</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Enhance your beauty treatment with holistic wellness services.
+                  </p>
+                  {[
+                    'Nutritional Consultation & Meal Planning',
+                    'Ayurvedic Treatments & Therapies',
+                    'Meditation & Mindfulness Sessions',
+                    'Yoga & Fitness Classes',
+                    'Spa & Massage Treatments',
+                    'Detox Programs & Cleanse Retreats'
+                  ].map((service) => (
+                    <div key={service} className="flex items-center space-x-2 rounded-lg border p-3">
+                      <input
+                        type="checkbox"
+                        id={service}
+                        checked={formData.hairAntiAging.includes(service)}
+                        onChange={() => handleCheckboxChange('hairAntiAging', service)}
+                        className="h-4 w-4 rounded border-gray-300"
+                      />
+                      <Label htmlFor={service} className="flex-1 cursor-pointer">{service}</Label>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {showAntiAging && (
+                <div className="space-y-3">
+                  <h3 className="font-semibold text-lg">Anti-Aging & Rejuvenation Packages</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Comprehensive anti-aging treatments to maintain your youthful appearance.
+                  </p>
+                  {[
+                    'Stem Cell Therapy',
+                    'Hormone Replacement Therapy',
+                    'IV Vitamin Therapy',
+                    'Bioidentical Hormone Treatments',
+                    'Anti-Aging Skincare Regimen',
+                    'Preventive Health Screenings'
+                  ].map((treatment) => (
+                    <div key={treatment} className="flex items-center space-x-2 rounded-lg border p-3">
+                      <input
+                        type="checkbox"
+                        id={treatment}
+                        checked={formData.hairAntiAging.includes(treatment)}
+                        onChange={() => handleCheckboxChange('hairAntiAging', treatment)}
+                        className="h-4 w-4 rounded border-gray-300"
+                      />
+                      <Label htmlFor={treatment} className="flex-1 cursor-pointer">{treatment}</Label>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Step 6/7: Additional Information */}
+          {((step === 6 && !showWellnessProgram && !showAntiAging) || (step === 7 && (showWellnessProgram || showAntiAging))) && (
             <div className="space-y-6">
               <div className="space-y-3">
                 <Label>Have you undergone any cosmetic or medical procedures before? *</Label>
@@ -618,10 +832,37 @@ const TreatmentFormPage: React.FC = () => {
               <div className="p-4 rounded-lg bg-muted border">
                 <h4 className="font-semibold mb-2">Declaration</h4>
                 <p className="text-sm text-muted-foreground">
-                  I confirm that the information provided above is true to the best of my knowledge. 
+                  I confirm that the information provided above is true to the best of my knowledge.
                   I understand that my details will be used only for treatment planning and will remain strictly confidential.
                 </p>
               </div>
+
+              {!checkRequiredDocuments() && (
+                <div className="p-4 rounded-lg bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800">
+                  <div className="flex gap-3">
+                    <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
+                    <div className="text-sm text-yellow-900 dark:text-yellow-100">
+                      <p className="font-semibold mb-1">Required Documents Missing</p>
+                      <p className="mb-2">
+                        Please upload all required documents before submitting your treatment form:
+                      </p>
+                      <ul className="list-disc list-inside space-y-1 text-yellow-700 dark:text-yellow-300">
+                        <li>Consent Form</li>
+                        <li>Medical History</li>
+                        <li>ID Proof</li>
+                      </ul>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-2"
+                        onClick={() => window.location.href = '/dashboard/documents'}
+                      >
+                        Go to Documents
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -636,19 +877,19 @@ const TreatmentFormPage: React.FC = () => {
               )}
             </div>
             <div className="flex gap-2">
-              <Button type="button" variant="outline" onClick={saveDraft}>
+              <Button type="button" variant="outline" onClick={saveDraft} disabled={isLoading}>
                 <Save className="mr-2 h-4 w-4" />
-                Save Draft
+                {isLoading ? 'Saving...' : 'Save Draft'}
               </Button>
-              {step < 6 ? (
-                <Button type="button" onClick={goToNextStep}>
+              {step < dynamicSteps[dynamicSteps.length - 1] ? (
+                <Button type="button" onClick={goToNextStep} disabled={isLoading}>
                   Continue
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               ) : (
-                <Button type="button" onClick={handleSubmit}>
+                <Button type="button" onClick={handleSubmit} disabled={isLoading}>
                   <Send className="mr-2 h-4 w-4" />
-                  Submit Form
+                  {isLoading ? 'Submitting...' : 'Submit Form'}
                 </Button>
               )}
             </div>

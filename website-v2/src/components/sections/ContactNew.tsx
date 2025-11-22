@@ -6,7 +6,7 @@ import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
-import { MapPin, Mail, Phone, Clock, CheckCircle2, Facebook, Instagram, Linkedin, AlertCircle, Copy } from 'lucide-react';
+import { MapPin, Mail, Phone, Clock, CheckCircle2, Facebook, Instagram, Linkedin, AlertCircle } from 'lucide-react';
 
 const ContactNew: React.FC = () => {
   const navigate = useNavigate();
@@ -20,9 +20,8 @@ const ContactNew: React.FC = () => {
   });
 
   const [formSubmitted, setFormSubmitted] = useState(false);
-  const [tempPassword, setTempPassword] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
-  const [copied, setCopied] = useState(false);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -30,24 +29,22 @@ const ContactNew: React.FC = () => {
     setError('');
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setError('');
+    setIsSubmitting(true);
     
-    const result = register(formData);
+    const result = await register(formData);
     if (result.success) {
-      setTempPassword(result.tempPassword);
       setFormSubmitted(true);
       window.scrollTo({ top: document.getElementById('contact')?.offsetTop, behavior: 'smooth' });
     } else {
       setError(result.error || 'Registration failed');
     }
+
+    setIsSubmitting(false);
   };
 
-  const copyPassword = () => {
-    navigator.clipboard.writeText(tempPassword);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
 
   const contactInfo = [
     {
@@ -81,32 +78,25 @@ const ContactNew: React.FC = () => {
               <div className="mb-6 inline-flex h-20 w-20 items-center justify-center rounded-full bg-primary/10">
                 <CheckCircle2 className="h-10 w-10 text-primary" />
               </div>
-              <h2 className="mb-4 text-3xl font-bold">Account Created Successfully!</h2>
+              <h2 className="mb-4 text-3xl font-bold">Registration Successful!</h2>
               <p className="mb-6 text-lg text-muted-foreground">
-                Welcome to Centillion Gateway! Your account has been created with a temporary password.
+                Welcome to Centillion Gateway! We've sent a verification email to your inbox.
               </p>
             </div>
 
-            <div className="bg-yellow-50 dark:bg-yellow-950 border border-yellow-200 dark:border-yellow-800 rounded-lg p-4 mb-6">
+            <div className="bg-blue-50 dark:bg-blue-950 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
               <div className="flex items-start gap-3">
-                <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
+                <Mail className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
                 <div className="flex-1">
-                  <p className="font-semibold text-yellow-900 dark:text-yellow-100 mb-2">
-                    Important: Save Your Temporary Password
+                  <p className="font-semibold text-blue-900 dark:text-blue-100 mb-2">
+                    Check Your Email
                   </p>
-                  <div className="flex items-center gap-2 bg-white dark:bg-gray-900 p-3 rounded border border-yellow-300 dark:border-yellow-700">
-                    <code className="flex-1 text-lg font-mono">{tempPassword}</code>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={copyPassword}
-                    >
-                      <Copy className="h-4 w-4 mr-2" />
-                      {copied ? 'Copied!' : 'Copy'}
-                    </Button>
-                  </div>
-                  <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-2">
-                    Please save this password. You will need it to log in and will be asked to change it on your first login.
+                  <p className="text-sm text-blue-700 dark:text-blue-300 mb-3">
+                    We've sent a verification link to <strong>{formData.email}</strong>.
+                    Please check your inbox (and spam folder) and click the link to verify your account.
+                  </p>
+                  <p className="text-sm text-blue-700 dark:text-blue-300">
+                    After verification, you'll be able to log in and set your password.
                   </p>
                 </div>
               </div>
@@ -123,12 +113,15 @@ const ContactNew: React.FC = () => {
               </div>
             </div>
 
-            <div className="text-center">
+            <div className="text-center space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Didn't receive the email? Check your spam folder or contact support.
+              </p>
               <Button
                 size="lg"
                 onClick={() => navigate('/login')}
               >
-                Continue to Login
+                Go to Login Page
               </Button>
             </div>
           </CardContent>
@@ -291,8 +284,8 @@ const ContactNew: React.FC = () => {
                       <p className="text-sm text-muted-foreground mb-4">
                         After registration, you'll receive a temporary password. You'll be able to complete the detailed treatment form after logging in to your account.
                       </p>
-                      <Button type="submit" className="w-full">
-                        Create Account
+                      <Button type="submit" className="w-full" disabled={isSubmitting}>
+                        {isSubmitting ? 'Creating Account...' : 'Create Account'}
                       </Button>
                       <div className="text-center text-sm text-muted-foreground mt-4">
                         Already have an account?{' '}
